@@ -51,3 +51,23 @@
 <!--
         ผู้ใช้เข้าและออกหน้าจออย่างรวดเร็วป้องกันการแครชด้วยการใช้ _timer?.cancel() มีเครื่องหมาย ? เพื่อรองรับกรณีที่หน้าจอถูกปิด dispose ไปก่อนที่ฟังก์ชัน initState จะสร้าง Timer เสร็จ หรือกรณีที่ตัวแปรยังเป็น null อยู่
 -->
+
+---
+
+### RES-103 · Requests pile up the longer you browse
+
+
+**Root cause**:
+<!--
+        เกิด Memory Leak จาก Listener ข้าม Lifecycle ระหว่าง Controller ที่ DealController ไปผูกกับ Service ที่ cartService ด้วยคำสั่ง ever() เมื่อผู้ใช้ปิดหน้าจอ DealController ไม่สามารถถูก Garbage Collected ได้เพราะ cartService ยังถือ Reference ของฟังก์ชัน _recheckAvailability ไว้ทำให้เมื่อตะกร้าสินค้ามีการเปลี่ยนแปลงตัว Controller เก่าๆทั้งหมดจึงถูกปลุกขึ้นมายิง API โหลดข้อมูลซ้ำพร้อมๆกัน
+-->
+
+**Fix**:
+<!--
+       นำตัวแปร Worker มารับค่าจากคำสั่ง ever() และทำการสั่ง _cartWorker?.dispose() ภายในฟังก์ชัน onClose() ของ GetxController เพื่อถอด Listener ออกอย่างสมบูรณ์เมื่อผู้ใช้ปิดหน้านั้นๆ
+-->
+
+**Alternative considered & rejected**:
+<!--
+        การเช็ค if Get.isRegistered<DealController>() ภายใน ever ปฏิเสธไปเพราะเป็นการแก้ที่ปลายเหตุ ตัว Listener ก็ยังคงเกาะกิน Memory อยู่ดี
+-->
