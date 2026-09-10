@@ -26,6 +26,8 @@ class HomeController extends GetxController {
 
   bool get hasMore => _page < _totalPages;
 
+  int _currentRequestId = 0;
+
   List<DealModel> get visibleDeals => todayOnly.value
       ? deals.where((d) => d.pickupWindow.isToday).toList()
       : deals.toList();
@@ -56,8 +58,14 @@ class HomeController extends GetxController {
   }
 
   Future<void> refreshDeals() async {
+    _currentRequestId++;
+    final requestId = _currentRequestId;
+
     _page = 1;
     final res = await dealRepo.fetchDeals(page: 1);
+
+    if (requestId != _currentRequestId) return;
+
     _totalPages = res.totalPages;
     deals.assignAll(res.items);
     refreshController.refreshCompleted();
@@ -69,16 +77,28 @@ class HomeController extends GetxController {
       refreshController.loadNoData();
       return;
     }
+
+    final requestId = _currentRequestId;
+
     _isFetchingMore = true;
-    _page++;
+
+    final nextPage = _page + 1;
+
     try {
-      final res = await dealRepo.fetchDeals(page: _page);
+      final res = await dealRepo.fetchDeals(page: nextPage);
+
+      if (requestId != _currentRequestId) {
+        _isFetchingMore = false;
+        return;
+      }
+
+      _page = nextPage;
       _totalPages = res.totalPages;
       deals.addAll(res.items);
     } catch (e) {
       LogService.error('loadMore failed', e);
-      _page--;
     }
+
     _isFetchingMore = false;
     refreshController.loadComplete();
   }
