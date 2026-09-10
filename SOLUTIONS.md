@@ -7,17 +7,17 @@
 
 **Root cause**:
 <!-- 
-    เกิดปัญหา Race Condition จากการเรียก Network request แบบ Asynchronous เมื่อผู้ใช้พิมพ์คำค้นหาอย่างรวดเร็ว เช่น "s", "su", "sush", "sushi" ระบบจะส่ง Request ออกไปหลายตัวติดๆกัน เนื่องจาก Network Latency ของ Fake API มีความหน่วงไม่เท่ากัน หาก Request ของคำเก่า เช่น "su" โหลดเสร็จและตอบกลับมาทีหลังคำล่าสุด "sushi" โค้ดเดิมจะนำผลลัพธ์ของ "su" ไปเขียนทับ Overwrite ข้อมูลล่าสุด ทำให้ UI แสดงผลลัพธ์ผิดจากคำที่อยู่ในช่องค้นหา 
+        เกิดปัญหา Race Condition จากการเรียก Network request แบบ Asynchronous เมื่อผู้ใช้พิมพ์คำค้นหาอย่างรวดเร็ว เช่น "s", "su", "sush", "sushi" ระบบจะส่ง Request ออกไปหลายตัวติดๆกัน เนื่องจาก Network Latency ของ Fake API มีความหน่วงไม่เท่ากัน หาก Request ของคำเก่า เช่น "su" โหลดเสร็จและตอบกลับมาทีหลังคำล่าสุด "sushi" โค้ดเดิมจะนำผลลัพธ์ของ "su" ไปเขียนทับ Overwrite ข้อมูลล่าสุด ทำให้ UI แสดงผลลัพธ์ผิดจากคำที่อยู่ในช่องค้นหา 
 -->
 
 **Fix**:
 <!-- 
-    เพิ่มตัวแปร _latestSearchQuery ไว้ในระดับ Class เพื่อคอยจับว่าคำค้นหาล่าสุดคือคำว่าอะไร ทุกครั้งที่เริ่มฟังก์ชัน _search จะอัปเดตตัวแปรนี้ และเมื่อ API โหลดข้อมูลเสร็จหลัง await จะมีการสร้างเงื่อนไขตรวจสอบว่า currentQuery ของ Request นี้ยังตรงกับ _latestSearchQuery อยู่หรือไม่ ถ้ายืนยันว่าตรงกัน จึงจะอนุญาตให้อัปเดต results และปิด isLoading 
+        เพิ่มตัวแปร _latestSearchQuery ไว้ในระดับ Class เพื่อคอยจับว่าคำค้นหาล่าสุดคือคำว่าอะไร ทุกครั้งที่เริ่มฟังก์ชัน _search จะอัปเดตตัวแปรนี้ และเมื่อ API โหลดข้อมูลเสร็จหลัง await จะมีการสร้างเงื่อนไขตรวจสอบว่า currentQuery ของ Request นี้ยังตรงกับ _latestSearchQuery อยู่หรือไม่ ถ้ายืนยันว่าตรงกัน จึงจะอนุญาตให้อัปเดต results และปิด isLoading 
 -->
 
 **Alternative considered & rejected**:
 <!-- 
-    การใช้ Debounce หน่วงเวลา 300-500ms ค่อยยิง API ปฏิเสธไปแม้จะเป็นวิธีที่ดีในการลดภาระฝั่งเซิร์ฟเวอร์ แต่มัน ไม่ได้แก้ปัญหา Race condition ตรงๆ หาก Request แรกเจอ Network delay ที่นานผิดปกติจนตอบกลับหลัง Request ที่สอง ปัญหานี้ก็จะยังเกิดซ้ำอยู่ดี 
+        การใช้ Debounce หน่วงเวลา 300-500ms ค่อยยิง API ปฏิเสธไปแม้จะเป็นวิธีที่ดีในการลดภาระฝั่งเซิร์ฟเวอร์ แต่มัน ไม่ได้แก้ปัญหา Race condition ตรงๆ หาก Request แรกเจอ Network delay ที่นานผิดปกติจนตอบกลับหลัง Request ที่สอง ปัญหานี้ก็จะยังเกิดซ้ำอยู่ดี 
 -->
 
 **Edge cases**:
@@ -64,7 +64,7 @@
 
 **Fix**:
 <!--
-       นำตัวแปร Worker มารับค่าจากคำสั่ง ever() และทำการสั่ง _cartWorker?.dispose() ภายในฟังก์ชัน onClose() ของ GetxController เพื่อถอด Listener ออกอย่างสมบูรณ์เมื่อผู้ใช้ปิดหน้านั้นๆ
+        นำตัวแปร Worker มารับค่าจากคำสั่ง ever() และทำการสั่ง _cartWorker?.dispose() ภายในฟังก์ชัน onClose() ของ GetxController เพื่อถอด Listener ออกอย่างสมบูรณ์เมื่อผู้ใช้ปิดหน้านั้นๆ
 -->
 
 **Alternative considered & rejected**:
@@ -96,3 +96,32 @@
 <!--
         ภายใน loadMore มีการอัปเดต _isFetchingMore = false ก่อนที่จะ return ทิ้งเมื่อ Request ID ไม่ตรงกัน เพื่อป้องกันไม่ให้สถานะการโหลดค้างและทำให้ผู้ใช้ไม่สามารถโหลดหน้าถัดไปได้อีกในอนาคต
 -->
+
+
+### RES-105 · Home feed is janky and memory keeps climbing
+
+
+**Root cause**:
+<!--
+        1. มีการใช้ Obx คลุมวิดเจ็ต ListView ทั้งก้อน ในขณะที่ตัว Controller มีการอัปเดตค่า offset ตลอดเวลาที่ผู้ใช้เลื่อนหน้าจอ ส่งผลให้ Flutter สั่ง Rebuild หน้าโฮมใหม่ทั้งหมด 60 ครั้งต่อวินาทีขณะไถจอ
+        2. การสร้างลิสต์สินค้าใช้วิธี ...controller.visibleDeals.map(...) ภายใน ListView ธรรมดา ทำให้ระบบต้องวาดการ์ดสินค้าทุกใบขึ้นมาใน Memory พร้อมกันตั้งแต่แรกแม้จะยังมองไม่เห็น
+        3. วิดเจ็ตโหลดรูปภาพใน the_network_image.dart ทำการแคชรูปภาพขนาดเต็มลงในหน่วยความจำโดยไม่มีการย่อสเกล ทำให้ RAM ถูกสูบจนหมดเมื่อเลื่อนดูรูปเยอะๆ
+-->
+
+**Fix**:
+<!--
+        เปลี่ยนโครงสร้างจาก ListView ธรรมดาเป็น CustomScrollView และใช้ SliverList เพื่อให้การ์ดสินค้าถูก Render เฉพาะตอนที่เลื่อนมาอยู่ในหน้าจอพร้อมทั้งแยก Obx ออกเป็นจุดเล็กๆ เพื่อคลุมเฉพาะ FilterChip และ FloatingActionButton ทำให้การเลื่อนจอไม่ไปกระตุกการ Rebuild ของลิสต์อีกต่อไป
+-->
+
+**Alternative considered & rejected**:
+<!--
+        การใช้ ListView.builder รวบทุกอย่างไว้ด้วยกัน ปฏิเสธไปเพราะหน้า Home มีส่วนหัว Flash Deals และ Filter ที่หน้าตาแตกต่างจากลิสต์สินค้า การพยายามเขียน if-else เช็ค index ภายใน ListView.builder จะทำให้โค้ดอ่านยากและดูแลรักษายาก การใช้ CustomScrollView ร่วมกับ Slivers เป็นวิธีที่ถูกต้องและคลีนกว่ามาก
+-->
+
+**Performance Evidence (DevTools)**:
+* **Before Fix:** เฟรมเรตตก เกิดอาการ Jank แท่งสีแดงจำนวนมากจากการที่วิดเจ็ตโดน Rebuild ซ้ำๆ
+  ![Before Performance](PerformanceEvidence/res-105-before-performance.png)
+
+* **After Fix:** การ Scroll ลื่นไหล ไม่กระตุก แท่งสีแดงหายไปอย่างชัดเจน เนื่องจากการ์ดถูก Rebuild เฉพาะใบที่โผล่เข้ามาในจอเท่านั้น
+  ![After Performance](PerformanceEvidence/res-105-after-performance.png)
+

@@ -60,12 +60,9 @@ class HomeScreen extends GetView<HomeController> {
           ],
         ),
         body: controller.isLoading.value
-            ? ListView(
-                children: const [
-                  ShimmerDealCard(),
-                  ShimmerDealCard(),
-                  ShimmerDealCard(),
-                ],
+            ? ListView.builder(
+                itemCount: 3,
+                itemBuilder: (context, index) => const ShimmerDealCard(),
               )
             : SmartRefresher(
                 controller: controller.refreshController,
@@ -73,39 +70,51 @@ class HomeScreen extends GetView<HomeController> {
                 enablePullUp: true,
                 onRefresh: controller.refreshDeals,
                 onLoading: controller.loadMore,
-                child: ListView(
+                child: CustomScrollView(
                   controller: controller.scrollController,
-                  children: [
+                  slivers: [
                     if (controller.flashDeals.isNotEmpty)
-                      FlashDealsSection(deals: controller.flashDeals),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Row(
-                        children: [
-                          const Text('Nearby deals',
-                              style: TextStyle(
-                                  fontSize: 17, fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          FilterChip(
-                            label: const Text('Pickup today'),
-                            selected: controller.todayOnly.value,
-                            onSelected: (v) => controller.todayOnly.value = v,
-                          ),
-                        ],
+                      SliverToBoxAdapter(
+                        child: FlashDealsSection(deals: controller.flashDeals),
+                      ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                        child: Row(
+                          children: [
+                            const Text('Nearby deals',
+                                style: TextStyle(
+                                    fontSize: 17, fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            Obx(() => FilterChip(
+                                  label: const Text('Pickup today'),
+                                  selected: controller.todayOnly.value,
+                                  onSelected: (v) =>
+                                      controller.todayOnly.value = v,
+                                )),
+                          ],
+                        ),
                       ),
                     ),
-                    ...controller.visibleDeals
-                        .map((deal) => DealCard(deal: deal)),
-                    const SizedBox(height: 24),
+                    Obx(() => SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) =>
+                                DealCard(deal: controller.visibleDeals[index]),
+                            childCount: controller.visibleDeals.length,
+                          ),
+                        )),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 24),
+                    ),
                   ],
                 ),
               ),
-        floatingActionButton: offset > 800
+        floatingActionButton: Obx(() => controller.scrollOffset.value > 800
             ? FloatingActionButton.small(
                 onPressed: controller.scrollToTop,
                 child: const Icon(Icons.arrow_upward),
               )
-            : null,
+            : const SizedBox.shrink()),
       );
     });
   }
@@ -129,9 +138,8 @@ class HomeScreen extends GetView<HomeController> {
               final uri = Uri.tryParse(textController.text.trim());
               Get.back();
               if (uri == null) return;
-              final route = uri.hasQuery
-                  ? '${uri.path}?${uri.query}'
-                  : uri.path;
+              final route =
+                  uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
               Get.toNamed(route);
             },
             child: const Text('Open'),
