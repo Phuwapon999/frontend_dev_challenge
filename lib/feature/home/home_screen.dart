@@ -14,109 +14,117 @@ class HomeScreen extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final offset = controller.scrollOffset.value;
-      return Scaffold(
-        appBar: AppBar(
-          elevation: offset > 4 ? 2 : 0,
-          shadowColor: Colors.black26,
-          title: const Row(
-            children: [
-              Icon(Icons.eco, color: AppConfig.primaryGreen),
-              SizedBox(width: 8),
-              Text('Rescu',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () => Get.toNamed(Routes.search),
-            ),
-            IconButton(
-              icon: const Icon(Icons.map_outlined),
-              onPressed: () => Get.toNamed(Routes.map),
-            ),
-            IconButton(
-              icon: const Icon(Icons.receipt_long_outlined),
-              onPressed: () => Get.toNamed(Routes.orders),
-            ),
-            IconButton(
-              icon: const Icon(Icons.shopping_bag_outlined),
-              onPressed: () => Get.toNamed(Routes.cart),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'deeplink') _showDeepLinkDialog(context);
-                if (value == 'analytics') Get.toNamed(Routes.analyticsDebug);
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                    value: 'deeplink', child: Text('Simulate deep link…')),
-                PopupMenuItem(
-                    value: 'analytics', child: Text('Analytics debug')),
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Obx(() {
+          final offset = controller.scrollOffset.value;
+          return AppBar(
+            elevation: offset > 4 ? 2 : 0,
+            shadowColor: Colors.black26,
+            title: const Row(
+              children: [
+                Icon(Icons.eco, color: AppConfig.primaryGreen),
+                SizedBox(width: 8),
+                Text('Rescu',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
               ],
             ),
-          ],
-        ),
-        body: controller.isLoading.value
-            ? ListView.builder(
-                itemCount: 3,
-                itemBuilder: (context, index) => const ShimmerDealCard(),
-              )
-            : SmartRefresher(
-                controller: controller.refreshController,
-                enablePullDown: true,
-                enablePullUp: true,
-                onRefresh: controller.refreshDeals,
-                onLoading: controller.loadMore,
-                child: CustomScrollView(
-                  controller: controller.scrollController,
-                  slivers: [
-                    if (controller.flashDeals.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: FlashDealsSection(deals: controller.flashDeals),
-                      ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                        child: Row(
-                          children: [
-                            const Text('Nearby deals',
-                                style: TextStyle(
-                                    fontSize: 17, fontWeight: FontWeight.bold)),
-                            const Spacer(),
-                            Obx(() => FilterChip(
-                                  label: const Text('Pickup today'),
-                                  selected: controller.todayOnly.value,
-                                  onSelected: (v) =>
-                                      controller.todayOnly.value = v,
-                                )),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Obx(() => SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) =>
-                                DealCard(deal: controller.visibleDeals[index]),
-                            childCount: controller.visibleDeals.length,
-                          ),
-                        )),
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 24),
-                    ),
-                  ],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () => Get.toNamed(Routes.search),
+              ),
+              IconButton(
+                icon: const Icon(Icons.map_outlined),
+                onPressed: () => Get.toNamed(Routes.map),
+              ),
+              IconButton(
+                icon: const Icon(Icons.receipt_long_outlined),
+                onPressed: () => Get.toNamed(Routes.orders),
+              ),
+              IconButton(
+                icon: const Icon(Icons.shopping_bag_outlined),
+                onPressed: () => Get.toNamed(Routes.cart),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'deeplink') _showDeepLinkDialog(context);
+                  if (value == 'analytics') Get.toNamed(Routes.analyticsDebug);
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                      value: 'deeplink', child: Text('Simulate deep link…')),
+                  PopupMenuItem(
+                      value: 'analytics', child: Text('Analytics debug')),
+                ],
+              ),
+            ],
+          );
+        }),
+      ),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return ListView.builder(
+            itemCount: 3,
+            itemBuilder: (context, index) => const ShimmerDealCard(),
+          );
+        }
+
+        return SmartRefresher(
+          controller: controller.refreshController,
+          enablePullDown: true,
+          enablePullUp: true,
+          onRefresh: controller.refreshDeals,
+          onLoading: controller.loadMore,
+          child: CustomScrollView(
+            controller: controller.scrollController,
+            slivers: [
+              Obx(() => controller.flashDeals.isNotEmpty
+                  ? SliverToBoxAdapter(
+                      child: FlashDealsSection(deals: controller.flashDeals),
+                    )
+                  : const SliverToBoxAdapter(child: SizedBox.shrink())),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Row(
+                    children: [
+                      const Text('Nearby deals',
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      Obx(() => FilterChip(
+                            label: const Text('Pickup today'),
+                            selected: controller.todayOnly.value,
+                            onSelected: (v) => controller.todayOnly.value = v,
+                          )),
+                    ],
+                  ),
                 ),
               ),
-        floatingActionButton: Obx(() => controller.scrollOffset.value > 800
-            ? FloatingActionButton.small(
-                onPressed: controller.scrollToTop,
-                child: const Icon(Icons.arrow_upward),
-              )
-            : const SizedBox.shrink()),
-      );
-    });
+              Obx(() => SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) =>
+                          DealCard(deal: controller.visibleDeals[index]),
+                      childCount: controller.visibleDeals.length,
+                    ),
+                  )),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 24),
+              ),
+            ],
+          ),
+        );
+      }),
+      floatingActionButton: Obx(() => controller.scrollOffset.value > 800
+          ? FloatingActionButton.small(
+              onPressed: controller.scrollToTop,
+              child: const Icon(Icons.arrow_upward),
+            )
+          : const SizedBox.shrink()),
+    );
   }
 
   void _showDeepLinkDialog(BuildContext context) {
