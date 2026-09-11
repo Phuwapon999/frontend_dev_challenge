@@ -145,3 +145,26 @@
 <!--
        การคำนวณบวกเวลาเพิ่มเองแบบ Manual เช่น add(Duration(hours: 7)) ปฏิเสธแนวทางนี้ไป เพราะเป็นวิธีที่ Hardcode จะทำให้แอปพังทันทีถ้าผู้ใช้นำเครื่องไปเปิดในเขตเวลาอื่น หรือในประเทศที่มีการปรับเวลาตาม Daylight Saving Time การใช้ฟังก์ชัน .toLocal() ที่ถูกออกแบบมาเพื่อจัดการเรื่องนี้โดยเฉพาะจึงเป็นวิธีที่ถูกต้องและไร้ข้อบกพร่องที่สุด
 -->
+
+
+### RES-107 · Deep link opens to a crash
+
+
+**Root cause**:
+<!--
+        แอปพลิเคชันเกิดการ Crash ทันทีเมื่อเข้าใช้งานผ่าน Deep link เช่น Push notification เนื่องจากโค้ดใน `onInit` ของ `DealDetailsController` ทำการอ่านค่า `Get.arguments` และบังคับแปลงชนิดตัวแปร `as DealModel` โดยพลการ เมื่อเข้าใช้งานผ่าน Deep link จะไม่มีการส่งอ็อบเจ็กต์ผ่านหน่วยความจำ ทำให้ค่า `arguments` เป็น null และเกิดข้อผิดพลาด Type cast แครชในที่สุด นอกจากนี้ UI ไม่ได้ถูกออกแบบมาให้รองรับสถานะการรอข้อมูล Asynchronous loading
+-->
+
+**Fix**:
+<!--
+        1. ปรับปรุงลอจิกการรับข้อมูลให้รองรับ 2 ช่องทาง โดยใช้ `if (args is DealModel)` สำหรับการนำทางปกติ และดึง `Get.parameters['id']` ไปเรียก API (`dealRepo.fetchById`) สำหรับ Deep link
+        2. นำ State Machine (Enum: `DealLoadState`) มาใช้เพื่อจัดการสถานะหน้าจอ ได้แก่ `loading`, `ready`, และ `error`
+        3. แก้ไข UI (`DealDetailsScreen`) ให้ตอบสนองตาม `loadState` โดยเพิ่มหน้าจอ Loading ระหว่างรอ API และหน้าจอ Error พร้อมปุ่ม Retry เพื่อจัดการกรณีโหลดข้อมูลล้มเหลว
+-->
+
+**Alternative considered & rejected**:
+<!--
+       การใช้เพียงตัวแปร Boolean (`isLoading`) แบบธรรมดาปฏิเสธไป แม้จะป้องกันการแครชระหว่างรอข้อมูลได้ แต่ไม่ครอบคลุมกรณีที่ API ล้มเหลว การใช้ `DealLoadState` แบบ Enum ควบคู่กับการทำ Error UI & Retry mechanism เป็นวิธีที่ปลอดภัยและให้ประสบการณ์ผู้ใช้ที่ดีกว่า
+-->
+
+

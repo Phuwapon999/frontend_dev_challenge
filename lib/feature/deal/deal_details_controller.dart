@@ -6,6 +6,8 @@ import '../../service/analytics_service.dart';
 import '../../service/cart_service.dart';
 import '../../util/log_service.dart';
 
+enum DealLoadState { loading, ready, error }
+
 class DealDetailsController extends GetxController {
   final DealRepo dealRepo;
   final CartService cartService;
@@ -19,6 +21,7 @@ class DealDetailsController extends GetxController {
 
   late final DealModel deal;
 
+  final loadState = DealLoadState.loading.obs;
   final _quantityLeft = RxnInt();
   int? get quantityLeft => _quantityLeft.value;
 
@@ -27,15 +30,51 @@ class DealDetailsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    deal = Get.arguments as DealModel;
-    _quantityLeft.value = deal.quantityLeft;
+    final args = Get.arguments;
+    if (args is DealModel) {
+      // มาจาก home feed — มีอ็อบเจกต์อยู่ในมือแล้ว ไม่ต้องยิง network
+      _onDealReady(args);
+    } else {
+      // มาจาก deep link (หรือ route ใดๆ ที่ไม่มี arguments) — มีแค่ id
+      // จึงต้อง fetch ดีลก่อนที่จะ render อะไรก็ตามที่แตะ `deal`
+      _loadFromDeepLink();
+    }
+  }
+
+  Future<void> _loadFromDeepLink() async {
+    final rawId = Get.parameters['id'];
+    final id = rawId != null ? int.tryParse(rawId) : null;
+
+    if (id == null) {
+      LogService.error('deep link missing/invalid deal id: $rawId', null);
+      loadState.value = DealLoadState.error;
+      return;
+    }
+
+    try {
+      final fetched = await dealRepo.fetchById(id);
+      _onDealReady(fetched);
+    } catch (e) {
+      LogService.error('failed to load deal $id from deep link', e);
+      loadState.value = DealLoadState.error;
+    }
+  }
+
+  void _onDealReady(DealModel d) {
+    deal = d;
+    _quantityLeft.value = d.quantityLeft;
     analytics.logEvent('deal_details_view', {
-      'deal_id': deal.id,
+      'deal_id': d.id,
       'source': Get.parameters['source'] ?? 'unknown',
     });
-    // Whenever the cart changes, re-check this deal's remaining stock so the
-    // details screen never shows stale availability.
     _cartWorker = ever(cartService.itemCount, (_) => _recheckAvailability());
+    loadState.value = DealLoadState.ready;
+  }
+
+  Future<void> retry() async {
+    if (loadState.value != DealLoadState.error) return;
+    loadState.value = DealLoadState.loading;
+    await _loadFromDeepLink();
   }
 
   @override
