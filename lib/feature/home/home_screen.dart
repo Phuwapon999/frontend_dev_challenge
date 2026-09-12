@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:rescu/feature/shared_widget/deal_impression_tracker.dart';
 
 import '../../app_config.dart';
 import '../../routes/routes.dart';
@@ -106,8 +107,12 @@ class HomeScreen extends GetView<HomeController> {
               ),
               Obx(() => SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          DealCard(deal: controller.visibleDeals[index]),
+                      (context, index) => DealImpressionTracker(
+                        dealId: controller.visibleDeals[index].id,
+                        source: 'home_feed',
+                        position: index,
+                        child: DealCard(deal: controller.visibleDeals[index]),
+                      ),
                       childCount: controller.visibleDeals.length,
                     ),
                   )),

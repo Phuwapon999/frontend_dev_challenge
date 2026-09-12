@@ -160,4 +160,30 @@
 **Edge cases**:
 
 - Expired in bag หมดเวลาพอดีตอนอยู่ในตะกร้า จัดการโดยฝัง Timer.periodic ไว้ระดับ Global ใน CartService เพื่อตรวจสอบตะกร้าทุก 1 วินาที หากพบไอเทมที่หมดเวลา ระบบจะใช้ removeWhere ลบออก, เรียก items.refresh() เพื่ออัปเดต UI ของตะกร้าทันทีแบบเรียลไทม์, และแสดง Snackbar แจ้งเตือนผู้ใช้อย่างชัดเจน
+
 - Timezone drift การคำนวณ DateTime.now().difference(...) ทำงานได้อย่างถูกต้องไร้รอยต่อ เนื่องจากโมเดลข้อมูลได้ถูกแก้ไขให้แปลงเวลา UTC เป็น Local Time ตาม Timezone ของเครื่องผู้ใช้เรียบร้อยแล้วจากการแก้บั๊ก RES-106
+
+---
+
+### F-2 · Impression tracking
+
+**Approach**:
+
+- สร้างวิดเจ็ต DealImpressionTracker หุ้มการ์ดสินค้า โดยเรียกใช้ VisibilityDetector ตรวจสอบค่า visibleFraction >= 0.5 หากเข้าเงื่อนไขระบบจะเริ่มรัน Timer 1 วินาที โดยไม่มีการเรียก setState() เพื่อหลีกเลี่ยงการ Rebuild ที่ทำลายเฟรมเรต
+
+- สร้าง _batchQueue ใน AnalyticsService เมื่อมี Event แรกเข้ามา ระบบจะตั้ง Timer จับเวลา 15 วินาที และเมื่อสะสมครบ 10 Events หรือเวลาครบ 15 วินาที (อย่างใดอย่างหนึ่งถึงก่อน) ระบบจะทำแพ็กเกจส่งไปที่ FakeApiService.sendAnalyticsBatch และเคลียร์คิวทิ้ง
+
+**Verification**:
+
+- ทดสอบโดยไปที่ Home → ⋮ → Analytics debug เมื่อหยุดมองการ์ดเกิน 1 วินาที จะพบรายการ deal_impression แสดงขึ้นมาทันที พร้อมแสดง Properties ครบถ้วน deal_id, source, position
+
+- ตรวจสอบใน Debug Console จะพบ Log แจ้งเตือนการยิง API เช่น POST /analytics/batch events=10 เมื่อเงื่อนไข Batch ทำงานสมบูรณ์
+
+**Edge cases**:
+
+- ระบบ onVisibilityChanged จะตรวจสอบทันที หากเปอร์เซ็นต์การมองเห็นหลุดเกณฑ์ 50% ระบบจะสั่ง _timer?.cancel() ทิ้งก่อนถึง 1 วินาที ทำให้ไม่เกิดการยิง Event ขยะเข้าคิว
+
+- ป้องกันการนับวิวซ้ำด้วยการเช็ค ID ผ่าน Set<int> _seenDealIds ใน AnalyticsService ทำให้ดีล 1 ชิ้น จะถูกบันทึกแค่ 1 ครั้งต่อ App Session เสมอ แม้ผู้ใช้จะเลื่อนขึ้นลงหลายรอบ
+
+- ด้วยเงื่อนไขรัน Timer 15 วินาทีหลังเกิด Event แรก ช่วยลดระยะเวลาค้างท่อของข้อมูลให้สั้นที่สุด ลดความเสี่ยงที่ข้อมูล Impression จะสูญหายหากผู้ใช้พับจอหรือปิดแอปพลิเคชันอย่างกะทันหัน
+
