@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../model/deal_model.dart';
@@ -90,6 +91,22 @@ class DealDetailsController extends GetxController {
   }
 
   void addToCart() {
+    final existingItem =
+        cartService.items.firstWhereOrNull((i) => i.deal.id == deal.id);
+    final currentQty = existingItem?.quantity ?? 0;
+
+    if (currentQty >= (_quantityLeft.value ?? 0)) {
+      Get.snackbar(
+        'Maximum quantity reached',
+        'You have added all available stock for this item to your bag.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade100,
+        colorText: Colors.red.shade900,
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
     cartService.add(deal);
     Get.snackbar(
       'Added to bag',

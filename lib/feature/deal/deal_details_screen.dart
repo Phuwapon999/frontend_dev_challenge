@@ -179,11 +179,17 @@ class _DealDetailsBody extends StatelessWidget {
         color: Colors.white,
         child: SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: controller.addToCart,
-            icon: const Icon(Icons.add_shopping_cart),
-            label: const Text('Add to bag'),
-          ),
+          child: Builder(builder: (context) {
+            final isFlashExpired = deal.flashSaleEndsAt != null &&
+                deal.flashSaleEndsAt!.isBefore(DateTime.now());
+
+            return FilledButton.icon(
+              onPressed: isFlashExpired ? null : controller.addToCart,
+              icon: Icon(
+                  isFlashExpired ? Icons.timer_off : Icons.add_shopping_cart),
+              label: Text(isFlashExpired ? 'Flash sale ended' : 'Add to bag'),
+            );
+          }),
         ),
       ),
     );
