@@ -1,9 +1,3 @@
-import json
-
-# Provide context on the user's intent to help refine the file content if needed
-# The user wants to generate a markdown file (solutions.md) based on the provided text.
-content = """# Solutions
-
 ## Part A — Bug tickets
 
 
@@ -301,5 +295,8 @@ content = """# Solutions
 
 3. Documentation & cleanup  ประมาณ 1 ชั่วโมง
 
+**What's unfinished**:
+
+- การทำ Automated testing แบบครอบคลุม เช่น Unit test และ Widget test ถูกข้ามไปเนื่องจากข้อจำกัดด้านเวลา และระบบ Optimistic UI rollback ในปัจจุบันยังใช้เพียงแค่ Snackbar แจ้งเตือนแบบง่ายๆ ระบบ Retry queue สำหรับออฟไลน์ถูกตัดออกจากสโคปไปก่อน
 
 
