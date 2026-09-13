@@ -10,7 +10,55 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
 
   @override
   Widget build(BuildContext context) {
-    final deal = controller.deal;
+    return Obx(() {
+      switch (controller.loadState.value) {
+        case DealLoadState.loading:
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        case DealLoadState.error:
+          return Scaffold(
+            appBar: AppBar(),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "We couldn't load this deal.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: controller.retry,
+                      child: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        case DealLoadState.ready:
+          return _DealDetailsBody(
+              deal: controller.deal, controller: controller);
+      }
+    });
+  }
+}
+
+class _DealDetailsBody extends StatelessWidget {
+  const _DealDetailsBody({required this.deal, required this.controller});
+
+  final dynamic deal; // DealModel
+  final DealDetailsController controller;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -33,11 +81,11 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                           fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text(deal.storeName,
-                      style: TextStyle(
-                          fontSize: 15, color: Colors.grey.shade700)),
+                      style:
+                          TextStyle(fontSize: 15, color: Colors.grey.shade700)),
                   Text(deal.storeAddress,
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade500)),
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.grey.shade500)),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -56,7 +104,8 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                       Obx(() => Chip(
                             avatar: const Icon(Icons.inventory_2_outlined,
                                 size: 16),
-                            label: Text('${controller.quantityLeft ?? '-'} left'),
+                            label:
+                                Text('${controller.quantityLeft ?? '-'} left'),
                           )),
                     ],
                   ),
@@ -98,8 +147,8 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                   ),
                   const SizedBox(height: 16),
                   const Text('What you get',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Text(deal.description,
                       style: TextStyle(
@@ -111,7 +160,7 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                     Wrap(
                       spacing: 8,
                       children: deal.tags
-                          .map((t) => Chip(
+                          .map<Widget>((t) => Chip(
                                 label: Text(t),
                                 visualDensity: VisualDensity.compact,
                               ))
@@ -130,11 +179,17 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
         color: Colors.white,
         child: SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: controller.addToCart,
-            icon: const Icon(Icons.add_shopping_cart),
-            label: const Text('Add to bag'),
-          ),
+          child: Builder(builder: (context) {
+            final isFlashExpired = deal.flashSaleEndsAt != null &&
+                deal.flashSaleEndsAt!.isBefore(DateTime.now());
+
+            return FilledButton.icon(
+              onPressed: isFlashExpired ? null : controller.addToCart,
+              icon: Icon(
+                  isFlashExpired ? Icons.timer_off : Icons.add_shopping_cart),
+              label: Text(isFlashExpired ? 'Flash sale ended' : 'Add to bag'),
+            );
+          }),
         ),
       ),
     );

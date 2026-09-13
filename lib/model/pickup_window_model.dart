@@ -9,8 +9,8 @@ class PickupWindowModel {
 
   factory PickupWindowModel.fromJson(Map<String, dynamic> json) {
     return PickupWindowModel(
-      start: DateTime.parse(json['start'] as String? ?? ''),
-      end: DateTime.parse(json['end'] as String? ?? ''),
+      start: DateTime.parse(json['start'] as String? ?? '').toLocal(),
+      end: DateTime.parse(json['end'] as String? ?? '').toLocal(),
     );
   }
 
